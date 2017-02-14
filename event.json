@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "eventType": "SyncTrigger",
+  "region": "us-east-1",
+  "identityPoolId": "identityPoolId",
+  "identityId": "identityId",
+  "datasetName": "datasetName",
+  "datasetRecords": {
+    "Level": {
+      "oldValue": "6",
+      "newValue": "7",
+      "op": "replace"
+    },
+    "Lives": {
+      "oldValue": "4",
+      "newValue": "3",
+      "op": "replace"
+    }
+  }
+}

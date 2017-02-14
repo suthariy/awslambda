@@ -1,0 +1,109 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation for Image Thumbnail Lambda Function",
+    "Resources": {
+        "LambdaThumbnailRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": ["lambda.amazonaws.com"]
+                            },
+                            "Action": ["sts:AssumeRole"]
+                        }
+                    ]
+                },
+                "Path": "/"
+            }
+        },
+        "S3ImageThumbnailRole": {
+        	"Type": "AWS::Lambda::Permission",
+        	"Properties": {
+        		"Action": "lambda:InvokeFunction",
+        		"FunctionName": { "Fn::GetAtt": [ "CreateThumbnailLambda", "Arn" ]},
+        		"Principal": "s3.amazonaws.com"
+        	}
+        },
+        "LambdaThumbnailExecutionPolicy": {
+            "DependsOn": [
+                "LambdaThumbnailRole"
+            ],
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "LambdaRolePolicy",
+                "Roles": [
+                    {"Ref": "LambdaThumbnailRole"}
+                ],
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": ["arn:aws:logs:*:*:*"]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "Resource": [
+                                "arn:aws:s3:::*"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "CreateThumbnailLambda": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": [
+                "LambdaThumbnailRole",
+                "LambdaThumbnailExecutionPolicy"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "la-lambda-functions",
+                    "S3Key": "Archive.zip"
+                },
+                "Role": {
+                    "Fn::GetAtt": ["LambdaThumbnailRole", "Arn"]
+                },
+                "Description": "Create image thumbnail on upload to S3",
+                "Timeout": 20,
+                "Handler": "createthumbnail.handler",
+                "Runtime": "nodejs",
+                "MemorySize": 128
+            }
+        },
+        "S3BucketEvent": {
+            "Type": "AWS::S3::Bucket",
+            "DependsOn": [
+                "CreateThumbnailLambda",
+                "S3ImageThumbnailRole"
+            ],
+            "Properties": {
+                "BucketName": "la-lambda-images",
+                "NotificationConfiguration": {
+                	"LambdaConfigurations": [
+                	{
+                		"Function": {
+                			"Fn::GetAtt": [ "CreateThumbnailLambda", "Arn" ]
+                		},
+                		"Event": "s3:ObjectCreated:*"
+                	}
+                	]
+                }
+            }
+        }
+    }
+}
